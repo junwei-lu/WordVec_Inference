@@ -3,6 +3,7 @@ library(dplyr)
 
 source("Evaluate_cos.R")
 
+####################################################################################
 # Table2: The AUC of detecting known relation pairs with different methods.
 load("cosine_similarities.Rdata") # read in cosine similarities from different methods
 AUClist <- lapply(cosine, function(x){
@@ -13,6 +14,7 @@ AUC <- cbind(do.call("cbind", lapply(AUClist, function(x) x[,2])), AUClist[[1]][
 # print(AUC)
 kable(AUC, "latex", 3)
 
+####################################################################################
 # Table3: Power of detecting known relation pairs
 load("cosine_similarities.Rdata") # read in cosine similarities from different methods
 load("log_p_matrix.Rdata") # read in the log of p values for identifying whether each element is zero
@@ -27,6 +29,7 @@ power <- cbind(powerlist[[1]][,1], do.call("cbind", lapply(powerlist, function(x
 # print(power)
 kable(power, "latex", 3)
 
+####################################################################################
 # Table4: Spearman rank correlation test between the score and GPT ratings
 load("cosine_similarities.Rdata") # read in cosine similarities from different methods
 load("log_p_matrix.Rdata") # read in the log of p values for identifying whether each element is zero
@@ -52,6 +55,7 @@ colnames(corrtest) <- c('KNIT', names(cosine))
 # print(corrtest)
 kable(corrtest, "latex", 3)
 
+####################################################################################
 # Figure 6: The estimated low-rank PMI with the smallest p-values when quantifying their relationships with AD
 load("cosine_similarities.Rdata") # read in cosine similarities from different methods
 load("log_p_matrix.Rdata") # read in the log of p values for identifying whether each element is zero
@@ -80,6 +84,7 @@ ggp <- ggplot(df[1:5000,])  +
         axis.title=element_text(size=14,face="bold"))
 ggp 
 
+####################################################################################
 # Figure 7: t-SNE
 library(Rtsne)
 library(ggplot2)

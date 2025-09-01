@@ -1,7 +1,20 @@
-This folder includes codes for generating tables and figures in Section Applications to Electronic Health Records.
+# README
 
-Estimation of SVD-SPPMI and the variance of the estimator are generated using construct_KG.R.
+This folder contains the code for generating the tables and figures presented in **Section: Applications to Electronic Health Records**.
 
-Table2 (the AUC of detecting known relation pairs with different methods), Table3 (power of detecting known relation pairs), Table4 (spearman rank correlation test between the score and GPT ratings), Figure 6 (the estimated low-rank PMI with the smallest p-values when quantifying their relationships with AD), and Figure 7 (t-SNE visualization) are generated using RealData.R.
+## Data Preparation
+**construct_KG.R**  
+Estimates the **SVD-SPPMI embeddings** and computes the variance of the estimator.
 
-Evaluate_cos.R and other files include key functions for these tables and figures.
+## Tables and Figures
+**RealData.R**  
+Generates the following outputs:  
+- **Table 2**: AUC of detecting known relation pairs with different methods  
+- **Table 3**: Power of detecting known relation pairs  
+- **Table 4**: Spearman rank correlation between scores and GPT ratings  
+- **Figure 6**: Estimated low-rank PMI with the smallest p-values when quantifying their relationships with AD  
+- **Figure 7**: t-SNE visualization of embeddings  
+
+## Functions
+**Evaluate_cos.R** and related helper files  
+Provide the key functions used to evaluate cosine similarities, compute AUC, power, correlations, and generate plots.

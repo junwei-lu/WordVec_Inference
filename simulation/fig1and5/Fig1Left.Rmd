@@ -1,0 +1,280 @@
+---
+title: "Untitled"
+author: "zhiwei"
+date: "2023-03-20"
+output: html_document
+---
+
+```{r}
+library(pracma)
+library(MASS)
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+library(patchwork)
+library(latex2exp)
+library(reshape2)
+```
+
+
+
+```{r}
+prob_est <- function(mc_steps, p, V){
+  z <- matrix(rnorm(mc_steps * p), mc_steps, p)/sqrt(p)
+  p_est <- rep(0, d)
+  for(i in 1:mc_steps){
+    tmp <- exp(V %*% as.matrix(z[i,]))
+    p_est = p_est + tmp/sum(tmp)
+  }
+  return (p_est/mc_steps)
+}
+
+pwwu_est <- function(mc_steps, p, V, u, alpha){
+  z <- matrix(rnorm(mc_steps * p), mc_steps, p)/sqrt(p)
+  r <- matrix(rnorm(mc_steps * p), mc_steps, p)/sqrt(p)
+  zu <- alpha^{u/2}*z + sqrt(1 - alpha^u)*r
+  pmatrix_est <- matrix(0,d,d)
+  for(i in 1:mc_steps){
+    tmp1 <- exp(V %*% as.matrix(z[i,]))
+    tmp1 <- tmp1/sum(tmp1)
+    tmp2 <- exp(V %*% as.matrix(zu[i,]))
+    tmp2 <- tmp2/sum(tmp2)
+    pmatrix_est <- pmatrix_est + as.matrix(tmp1) %*% t(tmp2)
+  }
+  pmatrix_est <- pmatrix_est/mc_steps
+  return((pmatrix_est + t(pmatrix_est))/2)
+}
+```
+
+
+
+```{r}
+data_gene <- function(tm,p,alpha,V){
+    #V: d*p, p=[log(d)^2]
+    z <- rep(0,p)
+    to_seq <- rep(0,tm)
+    r <- matrix(rnorm(tm*p, sd = 1/sqrt(p)), tm, p)
+    for(i in 1:tm){
+      z <- sqrt(alpha)*z + sqrt(1-alpha)*r[i,]             #p*1  
+      se <- exp(V %*% as.matrix(z))  #d*1
+      to_seq[i] <- sample(1:d, 1, replace = TRUE, prob = se/sum(se))
+    }
+    return(to_seq)
+}
+
+ coocur_cal <- function(wd_seq, d ,q = 1){ #input one patient's time series data, output the co-occurrence matrix
+  co_m <- matrix(0,d,d)
+  l <- length(wd_seq)
+  for (i in 1:(l-q)) {
+    for (j in 1:min(q,l-i)) {
+      a = wd_seq[i]
+      b = wd_seq[i+j]
+      if(a == b){
+        co_m[a,a] <- co_m[a,a] + 2 
+      }else{
+        co_m[a,b] <- co_m[a,b] + 1
+        co_m[b,a] <- co_m[b,a] + 1
+      }
+    }
+  }
+  return(co_m)
+}
+
+SPPMI_calc_lr <- function(co, q = 1, d, len, n, p){ #compute PMI low rank estimator
+    r <- rowSums(co)
+    c <- (2*q*len - q^2 -q)*n #total co-occurrence
+    SPPMI <- matrix(0,d,d)
+    for (i in 1:d) {
+      for(j in 1:i){
+        SPPMI[i,j] = log(max(1e-3, c*co[i,j]/(r[i]*r[j])))
+        SPPMI[j,i] = SPPMI[i,j]
+      }
+    }
+    re <- svd(SPPMI, nu = p, nv = p)
+    L = re$d[1:p]
+    PMI_lr = re$u %*% diag(L) %*% t(re$v)
+    return(PMI_lr)
+  }
+  
+  SPPMI_calc <- function(co, q = 1, d, len, n){ #compute PMI low rank estimator
+    r <- rowSums(co)
+    c <- (2*q*len - q^2 -q)*n #total co-occurrence
+    SPPMI <- matrix(0,d,d)
+    for (i in 1:d) {
+      for(j in 1:i){
+        SPPMI[i,j] = log(max(1e-3, c*co[i,j]/(r[i]*r[j])))
+        SPPMI[j,i] = SPPMI[i,j]
+      }
+    }
+    return(SPPMI)
+  }
+```
+
+
+```{r}
+set.seed(111)
+d = 100
+p <- floor(log(d)^2) + 1                                           #dimension of word vector
+q <- 5                                                             #window size
+f = 10
+mc_steps = 1e7
+alpha <- 1 - log(d)/(p^2)
+ord <- 0
+kpa <- d^{-ord}  #1 #d^{-2}
+U <- orth(randn(n=d,m=p+2))[,1:p]
+L <- kpa*diag(p)
+V_init <- U %*% L    #V is d*p matrix
+p_est <- prob_est(mc_steps, p, V_init)
+p_mat <- matrix(0,d,d)
+for(u in 1:q){
+  print(u)
+  tmp_mat <- pwwu_est(mc_steps, p, V_init, u=u, alpha)
+  p_mat <- p_mat + tmp_mat
+}
+p_mat <- p_mat/q
+mu_center <- t(V_init) %*% p_est
+V <- V_init - as.matrix(rep(1, d)) %*% t(mu_center)
+```
+
+```{r}
+hist(rowSums(p_mat) - p_est)
+```
+
+```{r}
+alpha_p = 0
+for(u in 1:q){
+    alpha_p = alpha_p + alpha^u#(t_len - u)*alpha^u
+}
+alpha_p = alpha_p/(p*q)
+p_est2 <- rowSums(p_mat)
+PMI_tr <- matrix(0,d,d)
+for(i in 1:d){
+  for(j in 1:d){
+    PMI_tr[i,j] = log(p_mat[i,j]/(p_est2[i]*p_est2[j]))
+  }
+}
+tmp = as.vector(PMI_tr - alpha_p*V%*%t(V))
+hist(tmp)
+sqrt(sum(tmp^2)) #|PMI - Vtilde Vtilde^T|_F
+
+tmp2 = as.vector(PMI_tr - V_init%*%t(V_init)/p)
+hist(tmp2)
+sqrt(sum(tmp2^2)) #|PMI - V V^T / p|_F
+```
+
+```{r}
+set.seed(114514)
+t_len = 1000
+#tmp = apply(V, MARGIN = 1, function(x) exp(sum(x^2)/(2*p)))
+#pV = tmp/sum(tmp)
+alpha_p = 0
+for(u in 1:q){
+    alpha_p = alpha_p + alpha^u#(t_len - u)*alpha^u
+}
+alpha_p = alpha_p/(p*q)#(p*(t_len*q - (q^2+q)/2))
+V_tild = sqrt(alpha_p)*V #sqrt(alpha_p)*(V - as.matrix(rep(1,d)) %*% (pV %*% V))
+#VVT1 = V%*%t(V)/p
+VVT2 = V_tild %*% t(V_tild)
+```
+
+
+```{r}
+############### data generation #################
+set.seed(1224)
+nlist = c(200,400,600,800,1000,2000)
+# Number of runs
+num_runs <- 100
+
+# Matrices to store results for each run
+results_d1 <- matrix(0, nrow = num_runs, ncol = length(nlist))
+results_d2 <- matrix(0, nrow = num_runs, ncol = length(nlist))
+results_e1 <- matrix(0, nrow = num_runs, ncol = length(nlist))
+results_e2 <- matrix(0, nrow = num_runs, ncol = length(nlist))
+
+# Outer loop for 100 runs
+for(run in 1:num_runs) {
+print(run)
+d1 = rep(0,length(nlist))
+d2 = rep(0,length(nlist))
+e1 = rep(0,length(nlist))
+e2 = rep(0,length(nlist))
+i = 1
+for(n in nlist){
+  total_seq <- matrix(0, nrow = n, ncol = t_len)
+  for(l in 1:n){                                                   
+    total_seq[l,] <- data_gene(t_len,p,alpha,V)
+  }
+  co <- matrix(0,d,d)
+  for (j in 1:n) {
+    tmp2 <- total_seq[j,] 
+    tmp3 <- coocur_cal(tmp2, d, q)
+    co <-  co + tmp3
+  }
+  SP_est <- SPPMI_calc(co, q, d, t_len, n)
+  PMI_lr <- SPPMI_calc_lr(co, q, d, t_len, n,p)
+  d1[i] = norm(VVT2 - SP_est,"F")
+  d2[i] = norm(VVT2 - PMI_lr,"F")
+  e1[i] = norm(VVT2 - SP_est,"M")
+  e2[i] = norm(VVT2 - PMI_lr,"M")
+  i = i + 1
+}
+results_d1[run,] <- d1
+results_d2[run,] <- d2
+results_e1[run,] <- e1
+results_e2[run,] <- e2
+}
+d3 = rep(norm(PMI_tr - VVT2,"F"), length(nlist))
+e3 = rep(norm(PMI_tr - VVT2,"M"), length(nlist))
+```
+
+```{r}
+# Function to calculate quantiles
+get_quantiles <- function(M) {
+  qt20 <- apply(M, 2, quantile, probs = 0.2)
+  qt80 <- apply(M, 2, quantile, probs = 0.8)
+  median <- apply(M, 2, median)
+  return(list(median = median, qt20 = qt20, qt80 = qt80))
+}
+
+# Calculating quantiles for d1 and d2
+quantiles_d1 <- get_quantiles(results_e1)
+quantiles_d2 <- get_quantiles(results_e2)
+quantiles_d3 <- get_quantiles(t(e3))
+# Data for plotting
+data_d1 <- data.frame(SampleSize = nlist, Median = quantiles_d1$median, 
+                      Lower = quantiles_d1$qt20, Upper = quantiles_d1$qt80, Estimator = as.factor("\\widehat{PMI}"))
+data_d2 <- data.frame(SampleSize = nlist, Median = quantiles_d2$median, 
+                      Lower = quantiles_d2$qt20, Upper = quantiles_d2$qt80, Estimator = as.factor("\\tilde{PMI}"))
+data_d3 <- data.frame(SampleSize = nlist, Median = quantiles_d3$median, 
+                      Lower = quantiles_d3$qt20, Upper = quantiles_d3$qt80, Estimator = as.factor("Embedding"))
+plot_data <- rbind(data_d1, data_d2, data_d3)
+
+# Plotting
+p3 <- ggplot(plot_data, aes(x = SampleSize, y = Median, color = Estimator)) +
+  geom_point(size=1.5) + 
+  theme_bw() +
+  theme(axis.text=element_text(family="Times", size=15),                                                                                             axis.title=element_text(size=15,family="Times"),
+        legend.position = c(0.8,0.81)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Estimator), alpha = 0.2, color = NA) +
+  scale_x_log10() +
+  scale_colour_manual(
+  values = c("\\widehat{PMI}" = "#E57373",
+             "\\tilde{PMI}"   = "#64B5F6",
+             "Embedding"      = "#81C784"),
+  breaks = c("\\widehat{PMI}", "\\tilde{PMI}", "Embedding"),
+  labels = c(TeX("$\\widehat{PMI}$"),
+             TeX("$\\widetilde{PMI}$"),
+             TeX("$PMI$"))
+) +
+scale_fill_manual(
+  values = c("#E57373", "#64B5F6", "#81C784"),
+  breaks = c("\\widehat{PMI}", "\\tilde{PMI}", "Embedding"),
+  labels = c(TeX("$\\widehat{PMI}$"),
+             TeX("$\\widetilde{PMI}$"),
+             TeX("$PMI$"))
+) +
+  labs(x = 'Sample Size n', y = 'Max-Norm')
+print(p3)
+```
+

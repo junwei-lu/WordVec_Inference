@@ -307,7 +307,6 @@ get_quantiles <- function(M) {
 
 ###############################################################################
 ## Combine results into a single data frame for plotting
-## We'll illustrate the max-norm ("e" values) as in your original code
 ###############################################################################
 make_plot_data <- function(res_list, Tlist, label){
   # res_list is something like res_original$e1 or $e2, etc.
@@ -321,23 +320,10 @@ make_plot_data <- function(res_list, Tlist, label){
   )
 }
 
-# We illustrate combining e1 & e2 (Max-norm) for each generator
-# e1 = SPPMI_calc  =>  \widehat{PMI}
-# e2 = SPPMI_calc_lr => \tilde{PMI}
-
 ###############################################################################
 ## Build a unified data frame
 ###############################################################################
 build_generator_df <- function(results, generator_name, Tlist){
-  # results$e1 => widehat{PMI}
-  # results$e2 => tilde{PMI}
-  # We'll also add a third "Embedding" if you want to replicate the same style 
-  #   as your original code. Here you need to decide how to define "Embedding"
-  #   in your numeric experiment. In your original code, "Embedding" was 
-  #   something like: rep(norm(PMI_tr - VVT2,"M"), length(Tlist)), but PMI_tr 
-  #   was never defined. You may omit or define it in a suitable way.
-  # Here, let's just illustrate two lines (widehat{PMI} & tilde{PMI}) as an example.
-
   qd1 <- make_plot_data(results$e1, Tlist, "\\widehat{PMI}")
   qd2 <- make_plot_data(results$e2, Tlist, "\\tilde{PMI}")
   

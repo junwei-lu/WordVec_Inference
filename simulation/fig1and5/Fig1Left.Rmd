@@ -1,9 +1,3 @@
----
-title: "Untitled"
-author: "zhiwei"
-date: "2023-03-20"
-output: html_document
----
 
 ```{r}
 library(pracma)

@@ -1,9 +1,4 @@
----
-title: "pmi_sim_result1026"
-author: "zhiwei"
-date: "2023-10-27"
-output: html_document
----
+
 
 ```{r}
 library(latex2exp)

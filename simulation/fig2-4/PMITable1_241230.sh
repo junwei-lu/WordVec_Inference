@@ -49,4 +49,4 @@ echo "Parameters: d=${d}, ord=${ord}, c_len=${c_len}, n=${n}"
 echo "R_LIBS_USER is set to $R_LIBS_USER"
 module list
 
-Rscript PMITable1.R ${d} ${ord} ${c_len} ${n}
+Rscript PMITable1_241230.R ${d} ${ord} ${c_len} ${n}
